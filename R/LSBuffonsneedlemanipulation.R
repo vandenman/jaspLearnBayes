@@ -16,7 +16,7 @@
 #
 
 LSBuffonsneedlemanipulation   <- function(jaspResults, dataset, options, state = NULL){
- 
+
   # input values
   crosses <- options[["k"]]
   observations <- options[["n"]]
@@ -43,44 +43,46 @@ LSBuffonsneedlemanipulation   <- function(jaspResults, dataset, options, state =
   summaryTable$addColumnInfo(name = "Median", title = gettext("Median"),   type = "string")
   summaryTable$addColumnInfo(name = "upperCI", title = gettext("95% CI (upper)"), type = "string")
 
-  
+
   # fill in the table
   CI95lower <- 2 * l / (qbeta(.025, crosses, observations - crosses, lower.tail = FALSE) * d)
   med <- 2 * l / (qbeta(.5, crosses, observations - crosses, lower.tail = FALSE) * d)
   CI95upper <- 2 * l / (qbeta(.975, crosses, observations - crosses, lower.tail = FALSE) * d)
   summaryTable$addRows(list(lowerCI = CI95lower, Median = med,   upperCI = CI95upper))
 
-  
-  
+
+
   ## Distribution Plot
   distPlot <- createJaspPlot(title = "Prior and Posterior distribution",  width = 480, height = 320)
   distPlot$dependOn(c("crosses", "observations", "a", "b", "lengthRatio"))
   distPlot$addCitation("JASP Team (2018). JASP (Version 0.9.2) [Computer software].")
-  
+
   # values
   x <- seq(2,4,0.01)
   yPost <- 2 * l / (x^2 * d) * dbeta((2 * l / (x * d)), a + crosses, b + observations - crosses)
   yPrior <- 2 * l / (x^2 * d) * dbeta((2 * l / (x * d)), a, b)
   # axis specification
-  distPlot0 <- ggplot2::ggplot(data= NULL) +
-    #ggplot2::ggtitle("Prior and Posterior distribution") +
-    #ggplot2::xlab("Values") +
-    #ggplot2::ylab("Density") +
-    ggplot2::coord_cartesian(xlim = c(2, 4), ylim = c(0, 1.2*max(yPost)))
-  
-  distPlot$plotObject <- jaspGraphs::themeJasp(distPlot0, legend.position = "right") +
-    ggplot2::geom_line(ggplot2::aes(x = x, y = yPost, color = "Posterior for Pi")) +
-    ggplot2::geom_line(ggplot2::aes(x = rep(pi, 100), 
-                                    y = seq(0, 1.2*max(yPost), 1.2*max(yPost)/99), 
-                                    color = "pi")) +
-    ggplot2::geom_line(ggplot2::aes(x = x, y = yPrior, color = "Implied Prior for Pi")) +   
 
-    ggplot2::scale_color_manual(name = " ",
-                                values = c("Posterior for Pi" = "black", 
-                                           "pi" = "red", 
-                                           "Implied Prior for Pi" = "blue"))
-  
-  
+  df <- data.frame(
+    x = c(x, rep(pi, 2), x),
+    y = c(yPost, c(0, 1.2*max(yPost)), yPrior),
+    g = factor(rep(c("Posterior for Pi", "Pi", "Implied Prior for Pi"), c(length(yPost), 2, length(yPrior))),
+               levels = c("Posterior for Pi", "Pi", "Implied Prior for Pi"))
+  )
+
+  values <- factor(c(
+    "Pi"                   = "red",
+    "Posterior for Pi"     = "black",
+    "Implied Prior for Pi" = "blue"
+  ))
+
+  distPlot$plotObject <- ggplot2::ggplot(data = df, ggplot2::aes(x = x, y = y, group = g, color = g)) +
+    ggplot2::geom_line() +
+    ggplot2::scale_color_manual(name = NULL, values = levels(values)) +
+    ggplot2::coord_cartesian(xlim = c(2, 4), ylim = c(0, 1.2*max(yPost))) +
+    jaspGraphs::geom_rangeframe() +
+    jaspGraphs::themeJaspRaw(legend.position = "right")
+
   jaspResults[["summaryTable"]] <- summaryTable
   jaspResults[["distPlot"]] <- distPlot
 
